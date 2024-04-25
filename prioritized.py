@@ -80,10 +80,13 @@ class PrioritizedPlanningSolver(object):
                 #vertex constraints
                 for k in range(len(path)):
                         constraints.append({'agent': j,'loc': [path[k]],'timestep': k})
-
+    
                 #edge constraints
                 for k in range(len(path)-1):
-                    constraints.append({'agent': j, 'loc': [path[k], path[k+1]], 'timestep': k+1}) 
+                    constraints.append({'agent': j, 'loc': [path[k], path[k+1]], 'timestep': k+1})
+
+                
+                 
 
 
             result.append(path)

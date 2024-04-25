@@ -65,27 +65,24 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
                 constraint_table[timestep]['vertex'].append(constraint)
 
     #do not leave your goal spot
-    for k in range(0, max_time+1):
-        constraint_table[k] = {'vertex': [], 'edge': []}
+    for k in range(0, max_time):
 
-        constraint_table[k]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]+1)], 'timestep': k+1})
+        if k+1 not in constraint_table:
+                constraint_table[k+1] = {'vertex': [], 'edge': []}
+
+        constraint_table[k+1]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]+1)], 'timestep': k+1})
         
-        constraint_table[k]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]-1)], 'timestep': k+1})
+        constraint_table[k+1]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]-1)], 'timestep': k+1})
         
-        constraint_table[k]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]+1, goal_loc[1])], 'timestep': k+1})
+        constraint_table[k+1]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]+1, goal_loc[1])], 'timestep': k+1})
        
-        constraint_table[k]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]-1, goal_loc[1])], 'timestep': k+1})
+        constraint_table[k+1]['edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]-1, goal_loc[1])], 'timestep': k+1})
          
-    last_timestep = max(constraint_table.keys())
-    #goal_loc = constraint_table[last_timestep]['vertex'][-1]['loc']
-   # print("goal loc", goal_loc, "last timestep", last_timestep)
-
-   # if last_timestep + 1 not in constraint_table and last_timestep+1<9:
-   #     constraint_table[last_timestep + 1] = {'vertex': [], 'edge': []}
-   #     constraint_table[last_timestep + 1]['vertex'].append({'agent': agent, 'loc': [goal_loc], 'timestep': last_timestep + 1})
-
     return constraint_table
 
+def print_table(table):
+    for key, value in table.items():
+        print(f"{key}: {value}")
 
 def get_location(path, time):
     if time < 0:
@@ -145,7 +142,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     h_value = h_values[start_loc]
     max_time = 7
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
-    print("in a star ctable for agent ", agent, ":", c_table)
+    print_table(c_table)
     
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'time_step':0}
     push_node(open_list, root)
@@ -154,7 +151,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     while len(open_list) > 0:
         curr = pop_node(open_list)
         print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
-
+        
         if curr['loc'] == goal_loc:
             print("agent", agent, "at position", curr['loc'], "reached goal at time ", curr['time_step'])
             #terminate when this agent reaches its goal.
@@ -167,7 +164,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[curr['loc']],
                 'parent': curr,
-                'time_step': curr['time_step'] + 1}    
+                'time_step': curr['time_step'] + 1}
             
         for dir in range(4):
           
@@ -176,7 +173,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             if (my_map[child_loc[0]][child_loc[1]]):
                 #wall, do not add to possibilities
                 continue
-            elif is_constrained(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
+            if is_constrained(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
                 # If the transition is constrained, wait.
                 print("agent", agent, "with next location", child_loc, "constrained at time", curr['time_step']+1)
                 child = {'loc': curr['loc'],
