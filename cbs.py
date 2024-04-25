@@ -5,6 +5,23 @@ from single_agent_planner import compute_heuristics, a_star, get_location, get_s
 
 
 def detect_collision(path1, path2):
+    print("collision")
+    for t in range(min(len(path1), len(path2))):
+        # Check for vertex collision
+        if get_location(path1, t) == get_location(path2, t):
+            return {'type': 'vertex', 'time': t, 'location': get_location(path1, t)}
+
+        # Check for edge collision (swap)
+        if t > 0:
+            loc1_prev = get_location(path1, t - 1)
+            loc2_prev = get_location(path2, t - 1)
+            loc1_curr = get_location(path1, t)
+            loc2_curr = get_location(path2, t)
+            if loc1_curr == loc2_prev and loc2_curr == loc1_prev:
+                return {'type': 'edge', 'time': t, 'location1': loc1_curr, 'location2': loc2_curr}
+
+    # No collision found
+    return None
     ##############################
     # Task 3.1: Return the first collision that occurs between two robot paths (or None if there is no collision)
     #           There are two types of collisions: vertex collision and edge collision.
@@ -12,10 +29,22 @@ def detect_collision(path1, path2):
     #           An edge collision occurs if the robots swap their location at the same timestep.
     #           You should use "get_location(path, t)" to get the location of a robot at time t.
 
-    pass
 
 
 def detect_collisions(paths):
+    print("collisions")
+    collisions = []
+
+    # Iterate over all pairs of robots
+    for i in range(len(paths)):
+        for j in range(i + 1, len(paths)):
+            # Detect collision between the current pair of robots
+            collision = detect_collision(paths[i], paths[j])
+            if collision:
+                # Add collision information to the list
+                collisions.append({'robots': (i, j), 'collision': collision})
+    
+    return collisions
     ##############################
     # Task 3.1: Return a list of first collisions between all robot pairs.
     #           A collision can be represented as dictionary that contains the id of the two robots, the vertex or edge
@@ -89,6 +118,7 @@ class CBSSolver(object):
         return node
 
     def find_solution(self, disjoint=True):
+        print("cbs called")
         """ Finds paths for all agents from their start locations to their goal locations
 
         disjoint    - use disjoint splitting or not
@@ -101,6 +131,7 @@ class CBSSolver(object):
         # paths         - list of paths, one for each agent
         #               [[(x11, y11), (x12, y12), ...], [(x21, y21), (x22, y22), ...], ...]
         # collisions     - list of collisions in paths
+        
         root = {'cost': 0,
                 'constraints': [],
                 'paths': [],
