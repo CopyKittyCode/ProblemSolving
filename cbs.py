@@ -158,14 +158,14 @@ class CBSSolver(object):
         self.push_node(root)
 
         # Task 3.1: Testing
-        print(root['collisions'])
+        print("root collisions", root['collisions']) # done
 
         # Task 3.2: Testing
         for collision in root['collisions']:
-            print(standard_splitting(collision))
+            print("constraints resulting from collisions: ", standard_splitting(collision)) # done
 
         # High-Level Search
-            while not len(self.open_list) > 0:
+            while len(self.open_list) > 0:
                 # Get the next node from the open list
                 node = self.pop_node()
 
