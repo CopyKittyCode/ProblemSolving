@@ -62,7 +62,7 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
             if  len(constraint['loc']) == 2:
                 constraint_table[timestep]['edge'].append(constraint)
             elif len(constraint['loc']) == 1:
-                print("append vertex constraint")
+                #print("append vertex constraint")
                 constraint_table[timestep]['vertex'].append(constraint)
 
     #do not leave your goal spot
@@ -142,7 +142,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     h_value = h_values[start_loc]
     max_time = 7
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
-    print_table(c_table)
+    #print_table(c_table)
     
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'time_step':0}
     push_node(open_list, root)
@@ -175,7 +175,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 continue
             if is_constrained(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
                 # If the transition is constrained, wait.
-                print("agent", agent, "with next location", child_loc, "constrained at time", curr['time_step']+1)
+                #print("agent", agent, "with next location", child_loc, "constrained at time", curr['time_step']+1)
                 child = {'loc': curr['loc'],
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[curr['loc']],

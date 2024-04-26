@@ -41,7 +41,7 @@ def detect_collisions(paths):
     return collisions
 
 def standard_splitting(collision):
-    print("splitting")
+    print("standard splitting")
     constraints = []
 
     # Extract collision information
@@ -78,17 +78,34 @@ def standard_splitting(collision):
 
 
 def disjoint_splitting(collision):
-    ##############################
-    # Task 4.1: Return a list of (two) constraints to resolve the given collision
-    #           Vertex collision: the first constraint enforces one agent to be at the specified location at the
-    #                            specified timestep, and the second constraint prevents the same agent to be at the
-    #                            same location at the timestep.
-    #           Edge collision: the first constraint enforces one agent to traverse the specified edge at the
-    #                          specified timestep, and the second constraint prevents the same agent to traverse the
-    #                          specified edge at the specified timestep
-    #           Choose the agent randomly
+    print("disjoint splitting")
+    constraints = []
+    # Extract collision information
+    if 'loc' in collision['col']:  # For vertex collision
+        location = collision['col']['loc']
+        timestep = collision['col']['timestep']
+        agent = random.choice(collision['agents'])  # Choose agent randomly
 
-    pass
+        # First constraint: Enforces the chosen agent to be at the specified location at the specified timestep (to be continued in planner)
+        constraints.append({'agent': agent, 'loc': [location], 'timestep': timestep, 'positive':True})
+
+        # Second constraint: Prevents the same agent from being at the same location at the same timestep
+        constraints.append({'agent': agent, 'loc': [location], 'timestep': timestep, 'positive': False})
+
+    elif 'loc1' in collision and 'loc2' in collision['col']:  # For edge collision
+        location1 = collision['col']['loc1']
+        location2 = collision['col']['loc2']
+        timestep = collision['col']['timestep']
+        agent = random.choice(collision['agents'])  # Choose agent randomly
+
+        # First constraint: Enforces the chosen agent to traverse the specified edge at the specified timestep
+        constraints.append({'agent': agent, 'loc': [location1, location2], 'timestep': timestep, 'positive': True})
+
+        # Second constraint: Prevents the same agent from traversing the specified edge at the same timestep
+        constraints.append({'agent': agent, 'loc': [location2, location1], 'timestep': timestep, 'positive': False})
+    print("disjoint constraints", constraints)
+    return constraints
+
 
 
 class CBSSolver(object):
@@ -127,7 +144,8 @@ class CBSSolver(object):
         self.num_of_expanded += 1
         return node
 
-    def find_solution(self, disjoint=True):
+    def find_solution(self, disjoint):
+        #to get disjoint back to false, modify standard in run_experiments parser
         print("cbs called")
         """ Finds paths for all agents from their start locations to their goal locations
 
@@ -157,51 +175,48 @@ class CBSSolver(object):
         root['collisions'] = detect_collisions(root['paths'])
         self.push_node(root)
 
-        # Task 3.1: Testing
-        print("root collisions", root['collisions']) # done
-
-        # Task 3.2: Testing
-        for collision in root['collisions']:
-            print("constraints resulting from collisions: ", standard_splitting(collision)) # done
-
         # High-Level Search
-            while len(self.open_list) > 0:
-                # Get the next node from the open list
-                node = self.pop_node()
+        while len(self.open_list) > 0:
+            # Get the next node from the open list
+            node = self.pop_node()
 
-                # If this node has no collision, return solution
-                if not node['collisions']:
-                    self.print_results(node)
-                    return node['paths']
+            # If this node has no collision, return solution
+            if not node['collisions']:
+                self.print_results(node)
+                return node['paths']
 
-                # Choose the first collision and convert to a list of constraints
-                collision = node['collisions'][0]
+            # Choose the first collision and convert to a list of constraints
+            collision = node['collisions'][0]
+            if  disjoint:
+                print("disjoint", disjoint)
+                constraints = disjoint_splitting(collision)
+            else:
                 constraints = standard_splitting(collision)
 
-                # Add a new child node to the open list for each constraint
-                for constraint in constraints:
-                    child = {
-                        'cost': 0,  # Placeholder for cost calculation
-                        'constraints': node['constraints'] + [constraint],  # Add new constraint
-                        'paths': [],  # Placeholder for paths calculation
-                        'collisions': []  # Placeholder for collisions calculation
-                    }
+            # Add a new child node to the open list for each constraint
+            for constraint in constraints:
+                child = {
+                    'cost': 0,  # Placeholder for cost calculation
+                    'constraints': node['constraints'] + [constraint],  # Add new constraint
+                    'paths': [],  # Placeholder for paths calculation
+                    'collisions': []  # Placeholder for collisions calculation
+                }
 
-                    # Re-plan paths for each agent using the updated constraints
-                    for i in range(self.num_of_agents):
-                        path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
-                                    i, child['constraints'])
-                        if path is None:
-                            raise BaseException('No solutions')
-                        child['paths'].append(path)
+                # Re-plan paths for each agent using the updated constraints
+                for i in range(self.num_of_agents):
+                    path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                                i, child['constraints'])
+                    if path is None:
+                        raise BaseException('No solutions')
+                    child['paths'].append(path)
 
-                    # Update cost and collisions for the child node
-                    child['cost'] = get_sum_of_cost(child['paths'])
-                    child['collisions'] = detect_collisions(child['paths'])
+                # Update cost and collisions for the child node
+                child['cost'] = get_sum_of_cost(child['paths'])
+                child['collisions'] = detect_collisions(child['paths'])
 
-                    # Push the child node to the open list
-                    self.push_node(child)
-                    
+                # Push the child node to the open list
+                self.push_node(child)
+                
 
 
         self.print_results(root)
