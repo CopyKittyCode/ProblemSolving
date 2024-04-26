@@ -80,6 +80,8 @@ def standard_splitting(collision):
 def disjoint_splitting(collision):
     print("disjoint splitting")
     constraints = []
+    #dummy
+    #constraints.append({'agent': 1, 'loc': [(2,4), (2,3)], 'timestep': 5, 'positive': True})
     # Extract collision information
     if 'loc' in collision['col']:  # For vertex collision
         location = collision['col']['loc']
