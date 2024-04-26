@@ -8,7 +8,8 @@ def detect_collision(path1, path2):
     for t in range(min(len(path1), len(path2))):
         # Check for vertex collision
         if get_location(path1, t) == get_location(path2, t):
-            return {'loc': get_location(path1, t), 'time': t}
+            print("vertex collision detected")
+            return {'loc': get_location(path1, t), 'timestep': t}
 
         # Check for edge collision (swap)
         if t > 0:
@@ -17,16 +18,11 @@ def detect_collision(path1, path2):
             loc1_curr = get_location(path1, t)
             loc2_curr = get_location(path2, t)
             if loc1_curr == loc2_prev and loc2_curr == loc1_prev:
-                return {'loc1': loc1_curr, 'loc2': loc2_curr, 'time': t, }
+                print("edge collision detected")
+                return {'loc1': loc1_curr, 'loc2': loc2_curr, 'timestep': t, }
 
     # No collision found
     return None
-    ##############################
-    # Task 3.1: Return the first collision that occurs between two robot paths (or None if there is no collision)
-    #           There are two types of collisions: vertex collision and edge collision.
-    #           A vertex collision occurs if both robots occupy the same location at the same timestep
-    #           An edge collision occurs if the robots swap their location at the same timestep.
-    #           You should use "get_location(path, t)" to get the location of a robot at time t.
 
 
 
@@ -43,56 +39,42 @@ def detect_collisions(paths):
                 collisions.append({'agents': (i, j), 'col': collision})
     
     return collisions
-    ##############################
-    # Task 3.1: Return a list of first collisions between all robot pairs.
-    #           A collision can be represented as dictionary that contains the id of the two robots, the vertex or edge
-    #           causing the collision, and the timestep at which the collision occurred.
-    #           You should use your detect_collision function to find a collision between two robots.
-
-    pass
 
 def standard_splitting(collision):
     print("splitting")
     constraints = []
 
     # Extract collision information
-    agent1, agent2 = collision['agents']
+    agent0, agent1 = collision['agents']
     print("collision", collision)
 
     if 'loc' in collision['col']:  # For vertex collision
-        print("vertex collision")
-        location = collision['col']['loc'] # got to here
-        timestep = 0  # As no 'time' key is found, assuming timestep 0
+        location = collision['col']['loc']
+        timestep = collision['col']['timestep']
+
+        #Who has prio? Assume agent with lower number has prio. sheet says to constrain both
         
         # Constraint to prevent the first agent at the specified location at the specified timestep
-        constraints.append({'agent': agent1, 'loc': [location], 'timestep': timestep})
+        constraints.append({'agent': agent0, 'loc': [location], 'timestep': timestep})
+        
         
         # Constraint to prevent the second agent at the specified location at the specified timestep
-        constraints.append({'agent': agent2, 'loc': [location], 'timestep': timestep})
+        constraints.append({'agent': agent1, 'loc': [location], 'timestep': timestep})
         
     elif 'loc1' in collision and 'loc2' in collision['col']:  # For edge collision
         print("edge collition")
         location1 = collision['loc1']
         location2 = collision['loc2']
-        timestep = 0  # As no 'time' key is found, assuming timestep 0
+        timestep = collision['col']['timestep']
         
         # Constraint to prevent the first agent from traversing the specified edge at the specified timestep
-        constraints.append({'agent': agent1, 'loc': [location1, location2], 'timestep': timestep})
+        #agent with lower number has prio
+        constraints.append({'agent': agent0, 'loc': [location1, location2], 'timestep': timestep})
         
         # Constraint to prevent the second agent from traversing the specified edge at the specified timestep
-        constraints.append({'agent': agent2, 'loc': [location2, location1], 'timestep': timestep})
+        constraints.append({'agent': agent1, 'loc': [location2, location1], 'timestep': timestep})
     
     return constraints
-    ##############################
-    # Task 3.2: Return a list of (two) constraints to resolve the given collision
-    #           Vertex collision: the first constraint prevents the first agent to be at the specified location at the
-    #                            specified timestep, and the second constraint prevents the second agent to be at the
-    #                            specified location at the specified timestep.
-    #           Edge collision: the first constraint prevents the first agent to traverse the specified edge at the
-    #                          specified timestep, and the second constraint prevents the second agent to traverse the
-    #                          specified edge at the specified timestep
-
-    pass
 
 
 def disjoint_splitting(collision):
@@ -182,14 +164,45 @@ class CBSSolver(object):
         for collision in root['collisions']:
             print(standard_splitting(collision))
 
-        ##############################
-        # Task 3.3: High-Level Search
-        #           Repeat the following as long as the open list is not empty:
-        #             1. Get the next node from the open list (you can use self.pop_node()
-        #             2. If this node has no collision, return solution
-        #             3. Otherwise, choose the first collision and convert to a list of constraints (using your
-        #                standard_splitting function). Add a new child node to your open list for each constraint
-        #           Ensure to create a copy of any objects that your child nodes might inherit
+        # High-Level Search
+            while not len(self.open_list) > 0:
+                # Get the next node from the open list
+                node = self.pop_node()
+
+                # If this node has no collision, return solution
+                if not node['collisions']:
+                    self.print_results(node)
+                    return node['paths']
+
+                # Choose the first collision and convert to a list of constraints
+                collision = node['collisions'][0]
+                constraints = standard_splitting(collision)
+
+                # Add a new child node to the open list for each constraint
+                for constraint in constraints:
+                    child = {
+                        'cost': 0,  # Placeholder for cost calculation
+                        'constraints': node['constraints'] + [constraint],  # Add new constraint
+                        'paths': [],  # Placeholder for paths calculation
+                        'collisions': []  # Placeholder for collisions calculation
+                    }
+
+                    # Re-plan paths for each agent using the updated constraints
+                    for i in range(self.num_of_agents):
+                        path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                                    i, child['constraints'])
+                        if path is None:
+                            raise BaseException('No solutions')
+                        child['paths'].append(path)
+
+                    # Update cost and collisions for the child node
+                    child['cost'] = get_sum_of_cost(child['paths'])
+                    child['collisions'] = detect_collisions(child['paths'])
+
+                    # Push the child node to the open list
+                    self.push_node(child)
+                    
+
 
         self.print_results(root)
         return root['paths']

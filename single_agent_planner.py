@@ -62,6 +62,7 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
             if  len(constraint['loc']) == 2:
                 constraint_table[timestep]['edge'].append(constraint)
             elif len(constraint['loc']) == 1:
+                print("append vertex constraint")
                 constraint_table[timestep]['vertex'].append(constraint)
 
     #do not leave your goal spot
@@ -135,7 +136,6 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
         agent       - the agent that is being re-planned
         constraints - constraints defining where robot should or cannot go at each timestep
     """
-    print("a star called")
     open_list = []
     closed_list = dict()
     earliest_goal_timestep = 0
@@ -150,10 +150,10 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
     while len(open_list) > 0:
         curr = pop_node(open_list)
-        print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
+        #print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
         
         if curr['loc'] == goal_loc:
-            print("agent", agent, "at position", curr['loc'], "reached goal at time ", curr['time_step'])
+            #print("agent", agent, "at position", curr['loc'], "reached goal at time ", curr['time_step'])
             #terminate when this agent reaches its goal.
             #return get_path(curr)
             #terminate at specific timestamp
