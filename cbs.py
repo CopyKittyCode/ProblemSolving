@@ -85,7 +85,8 @@ def disjoint_splitting(collision):
     if 'loc' in collision['col']:  # For vertex collision
         location = collision['col']['loc']
         timestep = collision['col']['timestep']
-        agent = random.choice(collision['agents'])  # Choose agent randomly
+        agent=1
+        #agent = random.choice(collision['agents'])  # Choose agent randomly
         other_agent = collision['agents'][0] if agent == collision['agents'][1] else collision['agents'][1]
 
         # First constraint: Enforces the chosen agent to be at the specified location at the specified timestep (to be continued in planner)
