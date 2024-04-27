@@ -112,7 +112,7 @@ def get_path(goal_node):
 def is_constrained_positive(curr_loc, next_time, constraint_table):
     #assume i have only one pos constraint at a time
     if next_time in constraint_table and (len(constraint_table[next_time]['pos_vertex'])>0 or len(constraint_table[next_time]['pos_edge'])>0 ):
-       print("pos_node at next time" ,constraint_table[next_time]['pos_vertex'], "pos_edge at next time", constraint_table[next_time]['pos_edge'])
+       #print("pos_node at next time" ,constraint_table[next_time]['pos_vertex'], "pos_edge at next time", constraint_table[next_time]['pos_edge'])
        return True
     return False
 
@@ -184,9 +184,10 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'time_step': curr['time_step'] + 1}
         
         if is_constrained_positive(curr['loc'], curr['time_step'] + 1, c_table):
+            #print("positive constraint")
             if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
                 use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
-                print("use node", use_node)
+                #print("use node", use_node)
                 
                 child = {'loc': use_node,
                 'g_val': curr['g_val'] + 1,
@@ -195,7 +196,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'time_step': curr['time_step'] + 1}
             if len(c_table[curr['time_step']+1]['pos_edge'])>0:
                 use_edge = c_table[curr['time_step']+1]['pos_edge'][0]['loc']
-                print("use edge", use_edge)
+                #print("use edge", use_edge)
                 child = {'loc': use_edge[1],
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_edge[1]],

@@ -75,7 +75,7 @@ if __name__ == '__main__':
                         help='The name of the instance file(s)')
     parser.add_argument('--batch', action='store_true', default=False,
                         help='Use batch output instead of animation')
-    parser.add_argument('--disjoint', action='store_true', default=False,
+    parser.add_argument('--disjoint', action='store_true', default=True,
                         help='Use the disjoint splitting')
     parser.add_argument('--solver', type=str, default=SOLVER,
                         help='The solver to use (one of: {CBS,Independent,Prioritized}), defaults to ' + str(SOLVER))

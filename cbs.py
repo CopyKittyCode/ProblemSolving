@@ -78,20 +78,20 @@ def standard_splitting(collision):
 
 
 def disjoint_splitting(collision):
-    print("disjoint splitting")
     constraints = []
     #dummy
-    constraints.append({'agent': 1, 'loc': [(2,4), (2,3)], 'timestep': 5, 'positive': True})
+    #constraints.append({'agent': 1, 'loc': [(2,4), (2,3)], 'timestep': 5, 'positive': True})
     # Extract collision information
     if 'loc' in collision['col']:  # For vertex collision
         location = collision['col']['loc']
         timestep = collision['col']['timestep']
         agent = random.choice(collision['agents'])  # Choose agent randomly
+        other_agent = collision['agents'][0] if agent == collision['agents'][1] else collision['agents'][1]
 
         # First constraint: Enforces the chosen agent to be at the specified location at the specified timestep (to be continued in planner)
         constraints.append({'agent': agent, 'loc': [location], 'timestep': timestep, 'positive':True})
 
-        # Second constraint: Prevents the same agent from being at the same location at the same timestep
+        # Second constraint: Prevents the  same agent from being at the same location at the same timestep
         constraints.append({'agent': agent, 'loc': [location], 'timestep': timestep, 'positive': False})
 
     elif 'loc1' in collision and 'loc2' in collision['col']:  # For edge collision
@@ -99,7 +99,8 @@ def disjoint_splitting(collision):
         location2 = collision['col']['loc2']
         timestep = collision['col']['timestep']
         agent = random.choice(collision['agents'])  # Choose agent randomly
-
+        other_agent = collision['agents'][0] if agent == collision['agents'][1] else collision['agents'][1]
+        
         # First constraint: Enforces the chosen agent to traverse the specified edge at the specified timestep
         constraints.append({'agent': agent, 'loc': [location1, location2], 'timestep': timestep, 'positive': True})
 
@@ -108,31 +109,39 @@ def disjoint_splitting(collision):
     print("disjoint constraints", constraints)
     return constraints
 
-def paths_violate_constraint(constraints):
-    print("submitted constraints", constraints)
-    violated_agents = []
-
-    for agent, constraint in enumerate(constraints):
-        print("one constraint", constraint)
-        if constraint['positive']:  # Check if the constraint is positive
-            # Extract constraint details
-            print("we have a positive constraint")
+def paths_violate_constraint(constraints, paths):
+    violating_agents = []
+    for constraint in constraints:
+        for agent in range(0, len(paths)):
             loc = constraint['loc']
             timestep = constraint['timestep']
+            p=paths[agent]
+            if constraint['positive'] and constraint['agent']==agent:  # Check if the constraint is positive, check only constraints that apply to this agent
+                # Check if the agent's path violates the positive constraint 
+                print("agent's", agent, "path ", p, " checked for timestep", timestep, "loc", loc, "positive")
+                if(len(loc)==1):
+                    if(p[timestep] != loc[0]):
+                        print("agent ", agent, "is violating positive vertex constraint")
+                        violating_agents.append(agent)
+                if(len(loc)==2):
+                    if not (p[timestep] == loc[0] and p[timestep+1] == loc[1]):
+                        print("agent ", agent, "is violating positive edge constraint")
+                        violating_agents.append(agent)
+            """elif not(constraint['positive']) and constraint['agent']==agent:
+                # Check if the agent's path violates the negative constraint 
+                print("agent's", agent, "path", p, " checked for timestep", timestep, "loc", loc, "negative")
+                if(len(loc)==1):
+                    if(p[timestep] == loc[0]):
+                        print("agent ", agent, "is violating negative vertex constraint")
+                        violating_agents.append(agent)
+                if(len(loc)==2):
+                    if (p[timestep] == loc[0] and p[timestep+1] == loc[1]):
+                        print("agent ", agent, "is violating negative vertex constraint")
+                        violating_agents.append(agent)"""
+            
+        
+    return violating_agents
 
-            # Check if the agent's path violates the positive constraint ---looks good to here
-            if agent_path_violates_constraint(agent, loc, timestep, constraints):
-                violated_agents.append(agent)
-
-    return violated_agents
-
-def agent_path_violates_constraint(agent, loc, timestep, constraints):
-    # Check if the agent's path violates the positive constraint
-    for constraint in constraints:
-        if constraint.get('positive', False) and constraint['timestep'] <= timestep:
-            if constraint['agent'] != agent and loc in constraint['loc']:
-                return True
-    return False
 
 
 
@@ -218,12 +227,12 @@ class CBSSolver(object):
             # Choose the first collision and convert to a list of constraints
             collision = node['collisions'][0]
             if  disjoint:
-                print("disjoint", disjoint)
                 constraints = disjoint_splitting(collision)
             else:
                 constraints = standard_splitting(collision)
 
-            print("parent node has constraints", node['constraints'])
+            print("parent node has constraints", node['constraints'], "and paths", node['paths'])
+
             # Add a new child node to the open list for each constraint
             for constraint in constraints:
                 child = {
@@ -232,7 +241,7 @@ class CBSSolver(object):
                     'paths': [],  # Placeholder for paths calculation
                     'collisions': []  # Placeholder for collisions calculation
                 }
-                print("child node has constraints", child['constraints'])
+                print("child node has constraints", child['constraints'], "and paths", child['paths'])
 
                 if not disjoint:
                     # Re-plan paths for each agent using the updated constraints
@@ -251,24 +260,44 @@ class CBSSolver(object):
 
 
                 else:
-                    #this is weird
-                    print("child constraints",child['constraints'])
-                    violated_agents = paths_violate_constraint(child['constraints'])
+                    violating_agents = paths_violate_constraint(child['constraints'], node['paths'])
+                    print("violating agents", violating_agents)
+                    """find new shortest paths not only for the agent with a newly imposed positive constraint but for other agents as well 
+                        You can compute a list of agent ids of agents that violate a given positive constraint with the helper function paths_violate_constraint.
+                        CBS with disjoint splitting should not add a child node if no path exists for one or more of these agents. 
+                    #this is weird"""
+                    child['paths']=node['paths']
+                  
                     paths_exist = True
-                    for agent in violated_agents:
-                        path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
+                    if len(violating_agents)==0:
+                        #no violating agents, all positive constraints are kept
+                        #recalculate paths for agents without positive constraints
+                        for agent in range(0, len(node['paths'])):
+                            path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
                                     agent, child['constraints'])
-                        if path is None:
-                            paths_exist = False
-                            break
-                        child['paths'].append(path)
+                            if path is None:
+                                paths_exist = False
+                                print("no paths")
+                                break
+                        if(paths_exist):
+                            child['paths'][agent]=path
+                    else:
+                        for agent in violating_agents:
+                            #make a new path which respects the positive constraints
+                            path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
+                                        agent, child['constraints'])
+                            if path is None:
+                                paths_exist = False
+                                print("no paths")
+                                break
+                        if(paths_exist):
+                            child['paths'][agent]=path
 
                     # If paths exist for all agents that violate the positive constraint, update cost and collisions
                     if paths_exist:
                         child['cost'] = get_sum_of_cost(child['paths'])
                         child['collisions'] = detect_collisions(child['paths'])
-                    self.push_node(child)
-                    
+                        self.push_node(child)
 
 
         self.print_results(root)
@@ -282,3 +311,4 @@ class CBSSolver(object):
         print("Sum of costs:    {}".format(get_sum_of_cost(node['paths'])))
         print("Expanded nodes:  {}".format(self.num_of_expanded))
         print("Generated nodes: {}".format(self.num_of_generated))
+        print("paths", node['paths'])
