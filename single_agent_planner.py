@@ -109,14 +109,11 @@ def get_path(goal_node):
     return path
 
 
-def is_constrained_positive(curr_loc, next_loc, next_time, constraint_table):
-    if next_time in constraint_table:
-        for vertex_constraint in constraint_table[next_time]['pos_vertex']:
-            if next_loc in vertex_constraint['loc']:
-                return True
-        for edge_constraint in constraint_table[next_time]['pos_edge']:
-            if curr_loc == edge_constraint['loc'][0] and next_loc == edge_constraint['loc'][1]:
-                return True
+def is_constrained_positive(curr_loc, next_time, constraint_table):
+    #assume i have only one pos constraint at a time
+    if next_time in constraint_table and (len(constraint_table[next_time]['pos_vertex'])>0 or len(constraint_table[next_time]['pos_edge'])>0 ):
+       print("pos_node at next time" ,constraint_table[next_time]['pos_vertex'], "pos_edge at next time", constraint_table[next_time]['pos_edge'])
+       return True
     return False
 
 #vertex and edge 
@@ -167,22 +164,44 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
 
     while len(open_list) > 0:
         curr = pop_node(open_list)
-        print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
+        #print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
      
-
         if curr['loc'] == goal_loc:
+            #if earliest_goal_timestep==0:
+             #   earliest_goal_timestep=curr['time_step']
             #print("agent", agent, "at position", curr['loc'], "reached goal at time ", curr['time_step'])
             #terminate when this agent reaches its goal.
             #return get_path(curr)
             #terminate at specific timestamp
             if(curr['time_step']>=max_time):
+                print("agent", agent, "reached goal", goal_loc, "by path",get_path(curr))
                 return get_path(curr)
-            else: # dont move(?)
+            else: # dont move
                 child = {'loc': curr['loc'],
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[curr['loc']],
                 'parent': curr,
                 'time_step': curr['time_step'] + 1}
+        
+        if is_constrained_positive(curr['loc'], curr['time_step'] + 1, c_table):
+            if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
+                use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
+                print("use node", use_node)
+                
+                child = {'loc': use_node,
+                'g_val': curr['g_val'] + 1,
+                'h_val': h_values[use_node],
+                'parent': curr,
+                'time_step': curr['time_step'] + 1}
+            if len(c_table[curr['time_step']+1]['pos_edge'])>0:
+                use_edge = c_table[curr['time_step']+1]['pos_edge'][0]['loc']
+                print("use edge", use_edge)
+                child = {'loc': use_edge[1],
+                'g_val': curr['g_val'] + 1,
+                'h_val': h_values[use_edge[1]],
+                'parent': curr,
+                'time_step': curr['time_step'] + 1}
+
             
         for dir in range(4):
           
@@ -191,27 +210,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             if (my_map[child_loc[0]][child_loc[1]]):
                 #wall, do not add to possibilities
                 continue
-           
-            if is_constrained_positive(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
-                if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
-                    use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
-                    print("child loc", child_loc)
-                    print("use node", use_node)
-                    child = {'loc': use_node,
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': h_values[use_node],
-                    'parent': curr,
-                    'time_step': curr['time_step'] + 1}
-                if len(c_table[curr['time_step']+1]['pos_edge'])>0:
-                    use_edge = c_table[curr['time_step']+1]['pos_edge'][0]['loc']
-                    print("use edge", use_edge)
-                    child = {'loc': use_edge[1],
-                    'g_val': curr['g_val'] + 1,
-                    'h_val': h_values[use_edge[1]],
-                    'parent': curr,
-                    'time_step': curr['time_step'] + 1}
-
-            elif is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
+            if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
                 # If the transition is constrained, wait.
                 #print("agent", agent, "with next location", child_loc, "constrained at time", curr['time_step']+1)
                 #print_table(c_table)
