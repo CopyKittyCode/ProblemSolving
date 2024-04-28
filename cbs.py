@@ -62,7 +62,7 @@ def standard_splitting(collision):
         constraints.append({'agent': agent1, 'loc': [location], 'timestep': timestep, 'positive':False})
         
     elif 'loc1' in collision and 'loc2' in collision['col']:  # For edge collision
-        print("edge collition")
+        print("edge collision")
         location1 = collision['loc1']
         location2 = collision['loc2']
         timestep = collision['col']['timestep']
@@ -85,9 +85,9 @@ def disjoint_splitting(collision):
     if 'loc' in collision['col']:  # For vertex collision
         location = collision['col']['loc']
         timestep = collision['col']['timestep']
-        agent=1
+        agent=0
         #agent = random.choice(collision['agents'])  # Choose agent randomly
-        other_agent = collision['agents'][0] if agent == collision['agents'][1] else collision['agents'][1]
+    
 
         # First constraint: Enforces the chosen agent to be at the specified location at the specified timestep (to be continued in planner)
         constraints.append({'agent': agent, 'loc': [location], 'timestep': timestep, 'positive':True})
@@ -100,14 +100,13 @@ def disjoint_splitting(collision):
         location2 = collision['col']['loc2']
         timestep = collision['col']['timestep']
         agent = random.choice(collision['agents'])  # Choose agent randomly
-        other_agent = collision['agents'][0] if agent == collision['agents'][1] else collision['agents'][1]
         
         # First constraint: Enforces the chosen agent to traverse the specified edge at the specified timestep
         constraints.append({'agent': agent, 'loc': [location1, location2], 'timestep': timestep, 'positive': True})
 
         # Second constraint: Prevents the same agent from traversing the specified edge at the same timestep
         constraints.append({'agent': agent, 'loc': [location2, location1], 'timestep': timestep, 'positive': False})
-    print("disjoint constraints", constraints)
+    #print("disjoint constraints", constraints)
     return constraints
 
 def paths_violate_constraint(constraints, paths):
@@ -117,7 +116,7 @@ def paths_violate_constraint(constraints, paths):
             loc = constraint['loc']
             timestep = constraint['timestep']
             p=paths[agent]
-            if constraint['positive'] and constraint['agent']==agent:  # Check if the constraint is positive, check only constraints that apply to this agent
+            """if constraint['positive'] and constraint['agent']==agent:  # Check if the constraint is positive, check if agent respects its own positive constraint: it should always.
                 # Check if the agent's path violates the positive constraint 
                 print("agent's", agent, "path ", p, " checked for timestep", timestep, "loc", loc, "positive")
                 if(len(loc)==1):
@@ -128,19 +127,20 @@ def paths_violate_constraint(constraints, paths):
                     if not (p[timestep] == loc[0] and p[timestep+1] == loc[1]):
                         print("agent ", agent, "is violating positive edge constraint")
                         violating_agents.append(agent)
-            """elif not(constraint['positive']) and constraint['agent']==agent:
-                # Check if the agent's path violates the negative constraint 
-                print("agent's", agent, "path", p, " checked for timestep", timestep, "loc", loc, "negative")
+            elif""" 
+            if constraint['positive'] and constraint['agent']!=agent:
+                # Check if the other agent's paths violate the positive constraint 
+                print("agent's", agent, "path", p, " checked for timestep", timestep, "loc", loc, "positive")
                 if(len(loc)==1):
                     if(p[timestep] == loc[0]):
-                        print("agent ", agent, "is violating negative vertex constraint")
+                        print("agent ", agent, "is violating other agent's positive vertex constraint")
                         violating_agents.append(agent)
                 if(len(loc)==2):
                     if (p[timestep] == loc[0] and p[timestep+1] == loc[1]):
-                        print("agent ", agent, "is violating negative vertex constraint")
-                        violating_agents.append(agent)"""
+                        print("agent ", agent, "is violating other agent's positive vertex constraint")
+                        violating_agents.append(agent)
             
-        
+    print(violating_agents)    
     return violating_agents
 
 
@@ -174,7 +174,7 @@ class CBSSolver(object):
 
     def push_node(self, node):
         heapq.heappush(self.open_list, (node['cost'], len(node['collisions']), self.num_of_generated, node))
-        print("Generate node {}".format(self.num_of_generated))
+        print("Generate node {}".format(self.num_of_generated), "with cost", node['cost'])
         self.num_of_generated += 1
 
     def pop_node(self):
@@ -235,6 +235,7 @@ class CBSSolver(object):
             print("parent node has constraints", node['constraints'], "and paths", node['paths'])
 
             # Add a new child node to the open list for each constraint
+           ###better: for every
             for constraint in constraints:
                 child = {
                     'cost': 0,  # Placeholder for cost calculation
@@ -270,7 +271,7 @@ class CBSSolver(object):
                     child['paths']=node['paths']
                   
                     paths_exist = True
-                    if len(violating_agents)==0:
+                    """if len(violating_agents)==0:
                         #no violating agents, all positive constraints are kept
                         #recalculate paths for agents without positive constraints
                         for agent in range(0, len(node['paths'])):
@@ -282,17 +283,18 @@ class CBSSolver(object):
                                 break
                         if(paths_exist):
                             child['paths'][agent]=path
-                    else:
-                        for agent in violating_agents:
-                            #make a new path which respects the positive constraints
-                            path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
-                                        agent, child['constraints'])
-                            if path is None:
-                                paths_exist = False
-                                print("no paths")
-                                break
-                        if(paths_exist):
-                            child['paths'][agent]=path
+                    else:"""
+                    for agent in violating_agents:
+                        #make a new path which respects the positive constraints
+                        print("recalculating path of agent", agent, "with the new constraint", child['constraints'])
+                        path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
+                                    agent, child['constraints'])
+                        if path is None:
+                            paths_exist = False
+                            print("no paths")
+                            break
+                    if(paths_exist):
+                        child['paths'][agent]=path
 
                     # If paths exist for all agents that violate the positive constraint, update cost and collisions
                     if paths_exist:
