@@ -190,6 +190,8 @@ class CBSSolver(object):
         """
 
         self.start_time = timer.time()
+        if timer.time() - self.start_time >0.3:
+             raise BaseException('took too long')
 
         # Generate the root node
         # constraints   - list of constraints

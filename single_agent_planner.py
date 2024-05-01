@@ -68,8 +68,8 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
             cpy['loc'] = constraint['loc']
             cpy['timestep']=constraint['timestep']
             cpy['positive']=False
-            print("constraints at the end of the if", constraint)
-            print("copy at the end of the if", cpy)
+            #print("constraints at the end of the if", constraint)
+            #print("copy at the end of the if", cpy)
             
             if timestep not in constraint_table:
                 constraint_table[timestep] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
@@ -87,7 +87,7 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
                 if cpy['positive']:
                     constraint_table[timestep]['pos_vertex'].append(cpy)
                 else:
-                    print("got here", cpy)
+                    #print("got here", cpy)
                     constraint_table[timestep]['neg_vertex'].append(cpy)
         else:
             if timestep not in constraint_table:
@@ -194,7 +194,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     h_value = h_values[start_loc]
     max_time = 5
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
-    print_table(c_table)
+    #print_table(c_table)
     
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'time_step':0}
     push_node(open_list, root)
@@ -205,16 +205,44 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
         #print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
         #terminate when this agent reaches its goal.
         #
-        if curr['loc'] == goal_loc:
-            if curr['time_step']>=max_time:
+        if curr['time_step']>=max_time:
+            if curr['loc'] == goal_loc and not is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
                 print("agent", agent, "reached goal", goal_loc, "by path",get_path(curr))
                 return(get_path(curr)) 
-        elif curr['loc'] == goal_loc:
+
+        if curr['loc'] == goal_loc and not is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
+            ##### add goal constraints here first??
             child = {'loc': curr['loc'],
             'g_val': curr['g_val'] + 1,
             'h_val': h_values[curr['loc']],
             'parent': curr,
             'time_step': curr['time_step'] + 1}
+        
+        
+        if curr['loc'] == goal_loc and is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
+            print("trying to move from goal")
+            moved =False
+            for dir in range(4):
+                child_loc = move(curr['loc'], dir)
+                if child_loc is None or not is_within_bounds(child_loc, my_map):
+                    continue
+                if (my_map[child_loc[0]][child_loc[1]]):
+                    # wall, do not add to possibilities
+                    continue 
+                if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
+                   continue # cant wait here, im trying to move
+                else:
+                    moved=True
+                    # If the target location is not blocked, proceed with creating a child node for the move
+                    child = {'loc': child_loc,
+                    'g_val': curr['g_val'] + 1,
+                    'h_val': h_values[child_loc],
+                    'parent': curr,
+                    'time_step': curr['time_step'] + 1}
+            if not moved:
+                print("could not move from goal")
+                #return None            
+            
      
         if is_constrained_positive(curr['time_step'] + 1, c_table):
             
@@ -234,8 +262,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'h_val': h_values[use_edge[1]],
                 'parent': curr,
                 'time_step': curr['time_step'] + 1}
-
             
+        #again try to move
+        mov=False 
         for dir in range(4):
           
             child_loc = move(curr['loc'], dir)
@@ -247,7 +276,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 continue 
             if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
                 # If the transition is constrained, wait in place
-                print("agent", agent, "with next location", child_loc, " neg constrained at time", curr['time_step']+1)
+                #print("agent", agent, "with next location", child_loc, " neg constrained at time", curr['time_step']+1)
                 #print_table(c_table)
                 child = {'loc': curr['loc'],
                 'g_val': curr['g_val'] + 1,
@@ -256,12 +285,15 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'time_step': curr['time_step'] + 1}
             
             else:
+                mov=True
                 # If the target location is not blocked, proceed with creating a child node for the move
                 child = {'loc': child_loc,
                  'g_val': curr['g_val'] + 1,
                  'h_val': h_values[child_loc],
                  'parent': curr,
                  'time_step': curr['time_step'] + 1}
+            
+            
 
             # Check if the child node is already in the closed list
             if (child['loc'], child['time_step']) in closed_list:
@@ -272,10 +304,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             else:
                 closed_list[(child['loc'], child['time_step'])] = child
                 push_node(open_list, child)
-
-            
         
-        
-           
+        if not mov and is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
+            print ("had to move couldnt, prune branch")
+            return None
 
     return None  # Failed to find solutions
