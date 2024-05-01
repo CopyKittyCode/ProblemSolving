@@ -6,6 +6,7 @@ from single_agent_planner import compute_heuristics, a_star, get_location, get_s
 
 def detect_collision(path0, path1):
     for t in range(min(len(path0), len(path1))):
+    #for t in range(0, len(path0)):
         # Check for vertex collision
         if get_location(path0, t) == get_location(path1, t):
             print(" vertex collision detected: ", get_location(path0, t), "timestep", t)
@@ -14,9 +15,13 @@ def detect_collision(path0, path1):
         # Check for edge collision (swap)
         if t > 0:
             loc0_prev = get_location(path0, t - 1) #14, t2
+            #print("loc0 prev", loc0_prev, t)
             loc1_prev = get_location(path1, t - 1) #13, t2
+            #print("loc1 prev", loc1_prev, t)
             loc0_curr = get_location(path0, t) # 13, t3
+           # print("loc0 prev", loc0_curr, t)
             loc1_curr = get_location(path1, t) # 14, t3
+            #print("loc1 prev", loc1_curr, t)
             #13 ==13 and 14 ==14
             if loc0_curr == loc1_prev and loc1_curr == loc0_prev:
                 print(" edge collision detected path 0: loc", loc0_curr, "path 1", loc1_curr, "beginning time", t -1)
@@ -82,8 +87,8 @@ def disjoint_splitting(collision):
     #dummy
     #constraints.append({'agent': 1, 'loc': [(2,4), (2,3)], 'timestep': 5, 'positive': True})
     # Extract collision information
-    agent = 1
-    #agent = random.choice(collision['agents'])  # Choose agent randomly
+    #agent = 0
+    agent = random.choice(collision['agents'])  # Choose agent randomly
     if 'loc' in collision['col']:  # For vertex collision
         location = collision['col']['loc']
         timestep = collision['col']['timestep']

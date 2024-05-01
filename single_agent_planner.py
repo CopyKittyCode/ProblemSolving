@@ -78,16 +78,17 @@ def build_constraint_table(constraints, agent, goal_loc, max_time):
                 b=constraint['loc'][1]
                 cpy['loc'][0]=b
                 cpy['loc'][1]=a
-                #print("copy if we have edge constraint", cpy)
+                print("copy if we have edge constraint", cpy)
                 if cpy['positive']:
                     constraint_table[timestep]['pos_edge'].append(cpy)
                 else:
                     constraint_table[timestep]['neg_edge'].append(cpy)
             elif len(cpy['loc']) == 1:
                 if cpy['positive']:
+                    print("added", cpy)
                     constraint_table[timestep]['pos_vertex'].append(cpy)
                 else:
-                    #print("got here", cpy)
+                    print("added", cpy)
                     constraint_table[timestep]['neg_vertex'].append(cpy)
         else:
             if timestep not in constraint_table:
@@ -192,7 +193,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     open_list = []
     closed_list = dict()
     h_value = h_values[start_loc]
-    max_time = 5
+    max_time = 7
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
     #print_table(c_table)
     
@@ -230,7 +231,12 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                     # wall, do not add to possibilities
                     continue 
                 if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
-                   continue # cant wait here, im trying to move
+                    # If the transition is constrained, wait in place
+                    child = {'loc': curr['loc'],
+                    'g_val': curr['g_val'] + 1,
+                    'h_val': h_values[curr['loc']],
+                    'parent': curr,
+                    'time_step': curr['time_step'] + 1}
                 else:
                     moved=True
                     # If the target location is not blocked, proceed with creating a child node for the move
@@ -248,7 +254,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             
             if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
                 use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
-                #print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
+                print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
                 child = {'loc': use_node,
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_node],
@@ -276,7 +282,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 continue 
             if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
                 # If the transition is constrained, wait in place
-                #print("agent", agent, "with next location", child_loc, " neg constrained at time", curr['time_step']+1)
+                print("agent", agent, "with next location", child_loc, " neg constrained at time", curr['time_step']+1)
                 #print_table(c_table)
                 child = {'loc': curr['loc'],
                 'g_val': curr['g_val'] + 1,
@@ -305,8 +311,8 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 closed_list[(child['loc'], child['time_step'])] = child
                 push_node(open_list, child)
         
-        if not mov and is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
-            print ("had to move couldnt, prune branch")
-            return None
+        #if not mov and is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
+            #print ("had to move couldnt, prune branch")
+            #return None
 
     return None  # Failed to find solutions
