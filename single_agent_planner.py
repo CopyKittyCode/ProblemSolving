@@ -13,7 +13,7 @@ def get_sum_of_cost(paths):
     for path in paths:
         unique_locations = set(path)
         num_unique_locations = len(unique_locations)
-        rst += num_unique_locations
+        rst += num_unique_locations -1
         #rst += len(path) - 1
     return rst
 
@@ -57,41 +57,67 @@ def compute_heuristics(my_map, goal):
 
 def build_constraint_table(constraints, agent, goal_loc, max_time):
     constraint_table = {}
+    #constraint[agent]=0
+    #current agent=1
     for constraint in constraints:
-        cpy=constraint
-        if cpy['agent'] != agent:
+        ###check how edge constrains are implemented - better turn to 2 node constraints 
+        cpy={}
+        timestep = constraint['timestep']
+        if constraint['agent'] != agent:
             cpy['agent']=agent
+            cpy['loc'] = constraint['loc']
+            cpy['timestep']=constraint['timestep']
             cpy['positive']=False
-
-        timestep = cpy['timestep']
-        if timestep not in constraint_table:
-            constraint_table[timestep] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
-        if  len(cpy['loc']) == 2:
-            if cpy['positive']:
-                constraint_table[timestep]['pos_edge'].append(cpy)
-            else:
-                constraint_table[timestep]['neg_edge'].append(cpy)
-        elif len(cpy['loc']) == 1:
-            if cpy['positive']:
-                constraint_table[timestep]['pos_vertex'].append(cpy)
-            else:
-                constraint_table[timestep]['neg_vertex'].append(cpy)
-        
+            print("constraints at the end of the if", constraint)
+            print("copy at the end of the if", cpy)
             
+            if timestep not in constraint_table:
+                constraint_table[timestep] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
+            if  len(cpy['loc']) == 2:
+                a=constraint['loc'][0]
+                b=constraint['loc'][1]
+                cpy['loc'][0]=b
+                cpy['loc'][1]=a
+                #print("copy if we have edge constraint", cpy)
+                if cpy['positive']:
+                    constraint_table[timestep]['pos_edge'].append(cpy)
+                else:
+                    constraint_table[timestep]['neg_edge'].append(cpy)
+            elif len(cpy['loc']) == 1:
+                if cpy['positive']:
+                    constraint_table[timestep]['pos_vertex'].append(cpy)
+                else:
+                    print("got here", cpy)
+                    constraint_table[timestep]['neg_vertex'].append(cpy)
+        else:
+            if timestep not in constraint_table:
+                constraint_table[timestep] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
+            if  len(constraint['loc']) == 2:
+                if constraint['positive']:
+                    constraint_table[timestep]['pos_edge'].append(constraint)
+                else:
+                    constraint_table[timestep]['neg_edge'].append(constraint)
+            elif len(constraint['loc']) == 1:
+                if constraint['positive']:
+                    constraint_table[timestep]['pos_vertex'].append(constraint)
+                else:
+                    constraint_table[timestep]['neg_vertex'].append(constraint)
+
+    #print("constraints at the end of the table", constraints)  
 
     #do not leave your goal spot
-    for k in range(0, max_time):
+    for k in range(0, max_time+1):
 
-        if k+1 not in constraint_table:
-                constraint_table[k+1] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
+        if k not in constraint_table:
+                constraint_table[k] = {'pos_vertex': [], 'pos_edge': [], 'neg_vertex':[], 'neg_edge':[]}
 
-        constraint_table[k+1]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]+1)], 'timestep': k+1, 'positive':False})
+        constraint_table[k]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]+1)], 'timestep': k, 'positive':False})
         
-        constraint_table[k+1]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]-1)], 'timestep': k+1, 'positive':False})
+        constraint_table[k]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0], goal_loc[1]-1)], 'timestep': k, 'positive':False})
         
-        constraint_table[k+1]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]+1, goal_loc[1])], 'timestep': k+1, 'positive':False})
+        constraint_table[k]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]+1, goal_loc[1])], 'timestep': k, 'positive':False})
        
-        constraint_table[k+1]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]-1, goal_loc[1])], 'timestep': k+1, 'positive':False})
+        constraint_table[k]['neg_edge'].append({'agent': agent, 'loc': [goal_loc, (goal_loc[0]-1, goal_loc[1])], 'timestep': k, 'positive':False})
          
     return constraint_table
 
@@ -120,7 +146,7 @@ def get_path(goal_node):
 
 def is_constrained_positive(next_time, constraint_table):
     if next_time in constraint_table and (len(constraint_table[next_time]['pos_vertex'])>0 or len(constraint_table[next_time]['pos_edge'])>0 ):
-       print("pos_node at next time" ,constraint_table[next_time]['pos_vertex'], "pos_edge at next time", constraint_table[next_time]['pos_edge'])
+       #print("pos_node at next time" ,constraint_table[next_time]['pos_vertex'], "pos_edge at next time", constraint_table[next_time]['pos_edge'])
        return True
     return False
 
@@ -132,6 +158,7 @@ def is_constrained_negative(curr_loc, next_loc, next_time, constraint_table):
                 return True
         for edge_constraint in constraint_table[next_time]['neg_edge']:
             if curr_loc == edge_constraint['loc'][0] and next_loc == edge_constraint['loc'][1]:
+                #print("neg edge constraint", edge_constraint, "timestep", edge_constraint['timestep'])
                 return True
     return False
 
@@ -150,8 +177,12 @@ def compare_nodes(n1, n2):
     """Return true is n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
 
+def is_within_bounds(loc, my_map):
+    return 0 <= loc[0] < len(my_map) and 0 <= loc[1] < len(my_map[0])
+
 
 def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
+    #print("a star called with args", "start_loc", start_loc, "goal_loc", goal_loc, "agent", agent, "constraints", constraints)
     """ my_map      - binary obstacle map
         start_loc   - start position
         goal_loc    - goal position
@@ -161,9 +192,9 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     open_list = []
     closed_list = dict()
     h_value = h_values[start_loc]
-    max_time = 7
+    max_time = 5
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
-    #print_table(c_table)
+    print_table(c_table)
     
     root = {'loc': start_loc, 'g_val': 0, 'h_val': h_value, 'parent': None, 'time_step':0}
     push_node(open_list, root)
@@ -172,27 +203,24 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     while len(open_list) > 0:
         curr = pop_node(open_list)
         #print("agent ", agent, "at position ", curr['loc'], " at time ", curr['time_step'])
-     
+        #terminate when this agent reaches its goal.
+        #
         if curr['loc'] == goal_loc:
-            #print("agent", agent, "at position", curr['loc'], "reached goal at time ", curr['time_step'])
-            #terminate when this agent reaches its goal.
-            #return get_path(curr)
-            #terminate at specific timestamp
-            if(curr['time_step']>=max_time):
+            if curr['time_step']>=max_time:
                 print("agent", agent, "reached goal", goal_loc, "by path",get_path(curr))
-                return get_path(curr)
-            else: # dont move
-                child = {'loc': curr['loc'],
-                'g_val': curr['g_val'] + 1,
-                'h_val': h_values[curr['loc']],
-                'parent': curr,
-                'time_step': curr['time_step'] + 1}
-        
+                return(get_path(curr)) 
+        elif curr['loc'] == goal_loc:
+            child = {'loc': curr['loc'],
+            'g_val': curr['g_val'] + 1,
+            'h_val': h_values[curr['loc']],
+            'parent': curr,
+            'time_step': curr['time_step'] + 1}
+     
         if is_constrained_positive(curr['time_step'] + 1, c_table):
             
             if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
                 use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
-                print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
+                #print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
                 child = {'loc': use_node,
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_node],
@@ -200,7 +228,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'time_step': curr['time_step'] + 1}
             if len(c_table[curr['time_step']+1]['pos_edge'])>0:
                 use_edge = c_table[curr['time_step']+1]['pos_edge'][0]['loc']
-                print("use edge", use_edge)
+                #print("use edge", use_edge)
                 child = {'loc': use_edge[1],
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_edge[1]],
@@ -211,13 +239,15 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
         for dir in range(4):
           
             child_loc = move(curr['loc'], dir)
+            if child_loc is None or not is_within_bounds(child_loc, my_map):
+                continue
 
             if (my_map[child_loc[0]][child_loc[1]]):
-                #wall, do not add to possibilities
-                continue
+                 # wall, do not add to possibilities
+                continue 
             if is_constrained_negative(curr['loc'], child_loc, curr['time_step'] + 1, c_table):
-                # If the transition is constrained, wait.
-                #print("agent", agent, "with next location", child_loc, "constrained at time", curr['time_step']+1)
+                # If the transition is constrained, wait in place
+                print("agent", agent, "with next location", child_loc, " neg constrained at time", curr['time_step']+1)
                 #print_table(c_table)
                 child = {'loc': curr['loc'],
                 'g_val': curr['g_val'] + 1,
@@ -242,5 +272,10 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             else:
                 closed_list[(child['loc'], child['time_step'])] = child
                 push_node(open_list, child)
+
+            
+        
+        
+           
 
     return None  # Failed to find solutions
