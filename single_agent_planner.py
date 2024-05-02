@@ -184,7 +184,7 @@ def is_within_bounds(loc, my_map):
 
 
 def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
-    #print("a star called with args", "start_loc", start_loc, "goal_loc", goal_loc, "agent", agent, "constraints", constraints)
+    print("a star called with args", "start_loc", start_loc, "goal_loc", goal_loc, "agent", agent, "constraints", constraints)
     """ my_map      - binary obstacle map
         start_loc   - start position
         goal_loc    - goal position
@@ -220,13 +220,18 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 print("     agent", agent, "reached goal", goal_loc, "by path",get_path(curr))
                 #print("earliest_goal for agent", agent, " is ", earliest_goal)
                 return(get_path(curr))
+        if curr['time_step']==max_time and curr['loc'] != goal_loc :
+            print("time exceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeded")
+            return None #### do not leave this here!!!
+        
         # if i reach the goal loc before the time is up and im allowed here for the next step, wait
-        elif curr['loc'] == goal_loc and not is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
+        if curr['loc'] == goal_loc and not is_constrained_negative(curr['loc'], curr['loc'], curr['time_step'] + 1, c_table):
             child = {'loc': curr['loc'],
             'g_val': curr['g_val'] + 1,
             'h_val': h_values[curr['loc']],
             'parent': curr,
             'time_step': curr['time_step'] + 1}
+        
         
         if is_constrained_positive(curr['time_step'] + 1, c_table):
             
