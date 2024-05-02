@@ -14,6 +14,7 @@ def detect_collision(path0, path1):
 
         # Check for edge collision (swap)
         if t >= 0:
+            # horizontal conflict
             loc0_prev = get_location(path0, t - 1)
             #print("loc0 prev", loc0_prev, t)
             loc1_prev = get_location(path1, t - 1)
@@ -25,7 +26,6 @@ def detect_collision(path0, path1):
             if loc0_curr == loc1_prev and loc1_curr == loc0_prev:
                 print("     edge collision detected path 0: loc", loc0_curr, "path 1", loc1_curr, "beginning time", t -1)
                 return {'begin_loc0': loc0_prev, 'end_loc0':loc0_curr, 'begin_loc1': loc1_prev, 'end_loc1':loc1_curr, 'timestep': t-1}
-
     # No collision found
     return None
 
@@ -77,10 +77,11 @@ def standard_splitting(collision):
 
 
 def disjoint_splitting(collision):
+    print("disjoined splitting")
     constraints = []
     # Extract collision information
     agent = 0
-    agent = 1
+    #agent = 1
     ### both work, just randomly not. 
     #agent = random.choice(collision['agents'])  # Choose agent randomly
     if 'loc' in collision['col']:  # For vertex collision
@@ -120,21 +121,21 @@ def paths_violate_constraint(constraints, paths):
                 # Check if the agent's path violates its own negative constraint 
                 if(len(loc)==1):
                     if(p[timestep] == loc[0]):
-                        print("     agent ", agent, "is violating negative vertex constraint")
+                        #print("     agent ", agent, "is violating negative vertex constraint")
                         violating_agents.append(agent)
                 if(len(loc)==2):
                     if  (p[timestep] == loc[0] and p[timestep+1] == loc[1]):
-                        print("     agent ", agent, "is violating negative edge constraint")
+                       # print("     agent ", agent, "is violating negative edge constraint")
                         violating_agents.append(agent)
             elif constraint['positive'] and constraint['agent']!=agent:
                     # Check if the other agent's paths violate the positive constraint 
                     if(len(loc)==1):
                         if(p[timestep] == loc[0]):
-                            print("     agent ", agent, "is violating other agent's positive vertex constraint")
+                            #print("     agent ", agent, "is violating other agent's positive vertex constraint")
                             violating_agents.append(agent)
                     if(len(loc)==2):
                         if (p[timestep] == loc[1] and p[timestep+1] == loc[0]):
-                            print("     agent", agent, "is violating other agent's positive edge constraint")
+                            #print("     agent", agent, "is violating other agent's positive edge constraint")
                             violating_agents.append(agent)
     return violating_agents
 
@@ -171,6 +172,7 @@ class CBSSolver(object):
 
     def pop_node(self):
         _, _, id, node = heapq.heappop(self.open_list)
+        print("")
         print("Expand node {}".format(id))
         self.num_of_expanded += 1
         return node
@@ -228,8 +230,6 @@ class CBSSolver(object):
             else:
                 constraints = standard_splitting(collision)
 
-        
-
             # Add a new child node to the open list for each constraint
             child_no = 0
             #a list of the two children
@@ -245,85 +245,98 @@ class CBSSolver(object):
                     'paths':[None, None],  # Placeholder for paths calculation
                     'collisions': []  # Placeholder for collisions calculation
                 }
- 
-                children.append(child)
 
-        
-                print("child", child_no,  "constraints", child['constraints'], "paths to compare", old_paths )
-                violating_agents = paths_violate_constraint(child['constraints'], old_paths)
-                #print(" violating agents", violating_agents)
-                
-                #gets me new paths for every violating agent for this child
-                for agent in violating_agents:
-                    #make a new path which respects the positive constraints
-                    #print("recalculating path of agent", agent, "with the new constraint", child['constraints'])
-                    path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
-                                agent, child['constraints'])
-                    if path is None:
-                        p_e[child_no]=False
-                        print("no paths, i want to prune!")
-                        #break
-                    else:
-                        new_paths.append({'child_no':child_no, 'agent':agent, 'path':path})
-
-                #child['paths']=old_paths
-                
-                #print ("working on child no", child['number'], "with current paths ", child['paths'])   #if all violating agents have a new path, in this child, each violating agent gets its path updated.
-                #if p_e[child['number']]:
-                    #print("path exists")
-                #give all the violating agents their new path
-                for p in new_paths:
-                    if p['child_no']==child['number']:
-                        child['paths'][p['agent']]=p['path']
-                #else: print("prune this somehow")                
-                #print("work done, child", child['number'], "paths", child['paths'])
-                #print("old paths here", old_paths)   
-
-                child_no +=1             
-                
-                
-            for child in children:
-                #print("old paths mai jos", old_paths)   
-                for i in range(0, len(child['paths'])):
-                    if child['paths'][i]  is None:
-                        child['paths'][i]=old_paths[i]
-                        ##delete the for and it still works
-            for child in children:
-                if p_e[child['number']]:
-                    print ("")
-                    print("     pushed child", child)
+                # Standard splitting:
+#######################################################################################################################################
+                if not disjoint:
+                    child['paths']=[]
+                    # Re-plan paths for each agent using the updated constraints
+                    ## Now this is going on forever, idk why, check tomorrow.
+                    for i in range(self.num_of_agents):
+                        path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
+                                    i, child['constraints'])
+                        if path is None:
+                            raise BaseException('No solutions')
+                        child['paths'].append(path)
+                    
+                    
+                    # Update cost and collisions for the child node
                     child['cost'] = get_sum_of_cost(child['paths'])
                     child['collisions'] = detect_collisions(child['paths'])
+                    print("child", child['number'], "path", child['paths'])
+                    # Push the child node to the open list
                     self.push_node(child)
-                else:print("pruning!")
+                    child['number']=child['number']+1
+##################################################################################################################################################
+
+                # Disjoint splitting
+                elif(disjoint):
+ 
+                    children.append(child)
+
+            
+                    print("child", child_no,  "constraints", child['constraints'], "paths to compare", old_paths )
+                    violating_agents = paths_violate_constraint(child['constraints'], old_paths)
+                    #print(" violating agents", violating_agents)
+                    
+                    #gets me new paths for every violating agent for this child
+                    for agent in violating_agents:
+                        #make a new path which respects the positive constraints
+                        #print("recalculating path of agent", agent, "with the new constraint", child['constraints'])
+                        path = a_star(self.my_map, self.starts[agent], self.goals[agent], self.heuristics[agent],
+                                    agent, child['constraints'])
+                        if path is None:
+                            p_e[child_no]=False
+                            #print("no paths, i want to prune!")
+                        else:
+                            new_paths.append({'child_no':child_no, 'agent':agent, 'path':path})
+
+                    #child['paths']=old_paths
+                    
+                    #print ("working on child no", child['number'], "with current paths ", child['paths'])   #if all violating agents have a new path, in this child, each violating agent gets its path updated.
+                    #if p_e[child['number']]:
+                        #print("path exists")
+                    #give all the violating agents their new path
+                    for p in new_paths:
+                        if p['child_no']==child['number']:
+                            child['paths'][p['agent']]=p['path']             
+                    #print("work done, child", child['number'], "paths", child['paths'])
+                    #print("old paths here", old_paths)   
+
+                    child_no +=1             
+                    
+            if(disjoint):       
+                for child in children:
+                    #print("old paths", old_paths)   
+                    for i in range(0, len(child['paths'])):
+                        if child['paths'][i]  is None:
+                            child['paths'][i]=old_paths[i]
+                            ##delete the for and it still works
+                for child in children:
+                    if p_e[child['number']]:
+                        print ("")
+                        print("     pushed child", child['number'], "with constraints", child['constraints'], "and cost", child['cost'])
+                        child['cost'] = get_sum_of_cost(child['paths'])
+                        child['collisions'] = detect_collisions(child['paths'])
+                        self.push_node(child)
+                    else:
+                        print("pruning child", child['number'])
             
         self.print_results(root)
         return root['paths']
 
 
     def print_results(self, node):
-        print("\n Found a solution! \n")
-        CPU_time = timer.time() - self.start_time
-        print("CPU time (s):    {:.2f}".format(CPU_time))
-        print("Sum of costs:    {}".format(get_sum_of_cost(node['paths'])))
-        print("Expanded nodes:  {}".format(self.num_of_expanded))
-        print("Generated nodes: {}".format(self.num_of_generated))
-        print("paths", node['paths'])
+        print("sanity check:")
+        if detect_collision(node['paths'][0], node['paths'][1]):
+            print("we still have collisions, failed")
+        else:
+            print("\n Found a solution! \n")
+            CPU_time = timer.time() - self.start_time
+            print("CPU time (s):    {:.2f}".format(CPU_time))
+            print("Sum of costs:    {}".format(get_sum_of_cost(node['paths'])))
+            print("Expanded nodes:  {}".format(self.num_of_expanded))
+            print("Generated nodes: {}".format(self.num_of_generated))
+            print("paths", node['paths'])
      
-    """ if not disjoint:
-        # Re-plan paths for each agent using the updated constraints
-        for i in range(self.num_of_agents):
-            path = a_star(self.my_map, self.starts[i], self.goals[i], self.heuristics[i],
-                        i, child['constraints'])
-            if path is None:
-                raise BaseException('No solutions')
-            child['paths'].append(path)
-
-    # Update cost and collisions for the child node
-    child['cost'] = get_sum_of_cost(child['paths'])
-    child['collisions'] = detect_collisions(child['paths'])
-    # Push the child node to the open list
-    self.push_node(child)
-
-
-    else:"""
+    

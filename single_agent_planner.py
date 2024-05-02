@@ -184,7 +184,7 @@ def is_within_bounds(loc, my_map):
 
 
 def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
-    print("a star called with args", "start_loc", start_loc, "goal_loc", goal_loc, "agent", agent, "constraints", constraints)
+    #print("a star called with args", "start_loc", start_loc, "goal_loc", goal_loc, "agent", agent, "constraints", constraints)
     """ my_map      - binary obstacle map
         start_loc   - start position
         goal_loc    - goal position
@@ -194,7 +194,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
     open_list = []
     closed_list = dict()
     h_value = h_values[start_loc]
-    max_time = 5
+    max_time = 7
     c_table = build_constraint_table(constraints, agent, goal_loc, max_time)
     #print_table(c_table)
     earliest_goal =-1
@@ -237,7 +237,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
             
             if len(c_table[curr['time_step']+1]['pos_vertex'])>0:
                 use_node=c_table[curr['time_step']+1]['pos_vertex'][0]['loc'][0]
-                print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
+                #print("agent", agent, "with positive constraint must be at", use_node, "at time", curr['time_step']+1)
                 child = {'loc': use_node,
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_node],
@@ -245,7 +245,7 @@ def a_star(my_map, start_loc, goal_loc, h_values, agent, constraints):
                 'time_step': curr['time_step'] + 1}
             if len(c_table[curr['time_step']+1]['pos_edge'])>0:
                 use_edge = c_table[curr['time_step']+1]['pos_edge'][0]['loc']
-                print("use edge", use_edge)
+                #print("use edge", use_edge)
                 child = {'loc': use_edge[1],
                 'g_val': curr['g_val'] + 1,
                 'h_val': h_values[use_edge[1]],
